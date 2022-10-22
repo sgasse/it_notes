@@ -219,6 +219,25 @@ which your SSH tunnel is already bound to. You can do so with `socat`:
 socat tcp-listen:6002,reuseaddr,fork tcp:big.db.com:8000
 ```
 
+### How do I make a service in my network available to a server outside of my network?
+
+This works via a reverse SSH tunnel. Let's imagine the following setup:
+
+- In a company network, there is the server `connector` (`10.10.4.10`) which you
+  have access to.
+- In the same network, we have a database `db` (`10.10.5.10`) that can be
+  accessed from `connector`. The database accepts connections on port `8000`.
+- You have service running on the server `outsider` (`54.53.52.51`) which can be
+  connected to over the public internet.
+
+Let's open a reverse SSH tunnel from `connector` that makes the database on `db`
+locally available on `outsider` on port `8200`:
+
+```bash
+# On `connector`
+ssh -R 8200:10.10.5.10:8000 user@54.53.52.51
+```
+
 ### How can I count incoming traffic?
 
 A colleague taught me this trick to figure out if an active UDP filter stops
