@@ -37,7 +37,7 @@ sudo ufw route allow in on eth4 out on eth3
 sudo ufw route allow in on eth5 out on eth6 to 10.0.0.10 port 80 proto tcp
 ```
 
-## Network assertions
+## Network assertions/tasks
 
 Things to figure out when debugging a network setup.
 
@@ -201,6 +201,18 @@ sudo tshark -i eth1 -w my_capturing.pcap
 # Capture with tcpdump
 sudo tcpdump -i eth1 -w "capturing_$(date +%FT%T).pcap"
 ```
+
+### Along which route am I connected to a server?
+
+The tool `mtr` lists a chain of hop points to a server that we connect to. This
+can be useful if we want to figure out via which gateway our traffic flows or
+how much latency is lost where.
+
+```bash
+mtr www.google.de
+```
+
+Note that not every server along the way might answer.
 
 ### How do I connect to a remote server through an SSH tunnel?
 
