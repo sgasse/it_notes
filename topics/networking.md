@@ -250,6 +250,17 @@ locally available on `outsider` on port `8200`:
 ssh -R 8200:10.10.5.10:8000 user@54.53.52.51
 ```
 
+### How can I connect to a server via SSH through another server?
+
+This works with so-called _jump-connections_ (agent-forwarding is required).
+In the example above, we could use different keys/passwords for different hosts
+on the way and as final target. We need all required keys only on our local
+machine and not on any of the intermediate servers.
+
+```bash
+ssh -J user1@host1,user2@host2 targetuser@targethost
+```
+
 ### How can I count incoming traffic?
 
 A colleague taught me this trick to figure out if an active UDP filter stops
