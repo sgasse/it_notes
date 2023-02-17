@@ -112,7 +112,7 @@ sudo sysctl -w kernel.kptr_restrict=0
 
 The Linux kernel comes with the tool `perf` which can record a lot of kernel,
 CPU and memory events. A great collection of commands can be found in
-[Brendan Gregg's article][perf_commands].
+[Brendan Gregg's article][perf_commands] and [slides][perf_slides].
 
 Record and report all systemcalls which carry "open" in their name:
 
@@ -288,6 +288,153 @@ cargo flamegraph -c "record -e branch-misses -c 100 -g"
 firefox flamegraph.svg
 ```
 
+# Tracing
+
+For binaries running on Linux, we can use the [`strace`][strace] tool to record
+systemcalls which are issued and what the return of them is. This can be useful
+in understanding crashes or interactions of binaries for which we have no
+sources.
+
+## Simple command
+
+Example of tracing the `ls` command:
+
+```sh
+# Include child processes, limit strlen to 255 (default is 32)
+strace -f -s 255 /usr/bin/ls
+```
+
+Output (interleaved with comments):
+
+```conf
+        [ ...many lines, probing for and loading libraries... ]
+# Related to setting the right terminal encoding
+        ioctl(1, TCGETS, {B38400 opost isig icanon echo ...}) = 0
+        ioctl(1, TIOCGWINSZ, {ws_row=73, ws_col=140, ws_xpixel=0, ws_ypixel=0}) = 0
+# Check that the directory `/etc/ssh/` exists
+        stat("/etc/ssh/", {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
+# Open the directory `/etc/ssh/`, got file descriptor `3`
+        openat(AT_FDCWD, "/etc/ssh/", O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_DIRECTORY) = 3
+# Get file status of file descriptor `3`
+        fstat(3, {st_mode=S_IFDIR|0755, st_size=4096, ...}) = 0
+# Read directory entries, receive 112 bytes answer
+        getdents64(3, /* 4 entries */, 32768)   = 112
+        getdents64(3, /* 0 entries */, 32768)   = 0
+# Close file descriptor `3`
+        close(3)                                = 0
+# Check file status of file descriptor `1` (stdout)
+        fstat(1, {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0x8), ...}) = 0
+# Write filenames to file descriptor `1`, get answer of 25 bytes written
+        write(1, "ssh_config  ssh_config.d\n", 25ssh_config  ssh_config.d
+        ) = 25
+# Close file descriptors `1` (stdout) and `2` (stderr)
+        close(1)                                = 0
+        close(2)                                = 0
+# Exit the process group indicating no errors (0)
+        exit_group(0)                           = ?
+        +++ exited with 0 +++
+```
+
+## Program with a few systemcalls
+
+Below is the main file of a small Rust program issuing a few systemcalls.
+Additionally, we have to create the file `existing_file` with some content in
+the directory from which we run the tracing.
+
+```rust
+// main.rs
+use std::fs::{remove_file, File, OpenOptions};
+use std::io::{Read, Write};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Running syscall tracing target");
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    // Open an existing file
+    let mut file1 = File::open("existing_file")?;
+
+    // Read the file to the buffer
+    let mut buf = Vec::new();
+    file1.read_to_end(&mut buf)?;
+
+    // Print the augmented message
+    let msg = String::from_utf8(buf)?;
+    println!("Read: {msg}");
+
+    // Write to a file
+    let mut file2 = OpenOptions::new().create(true).write(true).open("file2")?;
+    file2.write("Lorem ipsum".as_bytes())?;
+
+    // Delete file
+    remove_file("file2")?;
+
+    return Ok(());
+}
+```
+
+Build and trace the program:
+
+```sh
+cargo build
+strace -f -s 255 ./target/debug/syscall_tracing
+```
+
+Output (interleaved with comments):
+
+```conf
+        [ ...many lines, probing for and loading libraries... ]
+# Open virtual memory of this process, get file descriptor `3` as answer
+        openat(AT_FDCWD, "/proc/self/maps", O_RDONLY|O_CLOEXEC) = 3
+# Set resource limits of the process, in this case setting the stack size to 8192*1024 bytes
+        prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+# Check the status of file descriptor `3` (the virtual memory)
+        fstat(3, {st_mode=S_IFREG|0444, st_size=0, ...}) = 0
+# Read program and library data
+        read(3, "55d2aa435000-55d2aa43b000 r--p 00000000 fd:01 12582952                   /home/simon/workspace/syscall_tracing/target/debug/syscall_tracing\n55d2aa43b000-55d2aa478000 r-xp 00006000 fd:01 12582952                   /home/simon/work"..., 1024) = 1024
+        read(3, "gnu/libc-2.31.so\n7f5b56eae000-7f5b57026000 r-xp 00022000 fd:01 7340504                    /usr/lib/x86_64-linux-gnu/libc-2.31.so\n7f5b57026000-7f5b57074000 r--p 0019a000 fd:01 7340504                    /usr/lib/x86_64-linux-gnu/libc-2.31.so\n7f5b57074000-7"..., 1024) = 1024
+        read(3, "               /usr/lib/x86_64-linux-gnu/libdl-2.31.so\n7f5b57084000-7f5b5708a000 r--p 00000000 fd:01 7341269                    /usr/lib/x86_64-linux-gnu/libpthread-2.31.so\n7f5b5708a000-7f5b5709b000 r-xp 00006000 fd:01 7341269                    /usr/lib/"..., 1024) = 1024
+        read(3, "c_s.so.1\n7f5b570c0000-7f5b570c1000 r--p 00018000 fd:01 7347872                    /usr/lib/x86_64-linux-gnu/libgcc_s.so.1\n7f5b570c1000-7f5b570c2000 rw-p 00019000 fd:01 7347872                    /usr/lib/x86_64-linux-gnu/libgcc_s.so.1\n7f5b570c2000-7f5b570"..., 1024) = 1024
+        read(3, "00 0                          [stack]\n7fff04356000-7fff0435a000 r--p 00000000 00:00 0                          [vvar]\n7fff0435a000-7fff0435c000 r-xp 00000000 00:00 0                          [vdso]\nffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0  "..., 1024) = 282
+# Close file descriptor `3`
+        close(3)                                = 0
+# Get scheduler affinity (which CPUs we can run on), get answer `8`
+        sched_getaffinity(101893, 32, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) = 8
+# Write to file descr. `1` (stdout), get answer that 31 bytes were written
+        write(1, "Running syscall tracing target\n", 31Running syscall tracing target
+        ) = 31
+# Busy-sleep for 1 second and zero nanoseconds
+        clock_nanosleep(CLOCK_REALTIME, 0, {tv_sec=1, tv_nsec=0}, 0x7fff04217c30) = 0
+# Open file `existing_file` in current working directory, get file descr. `3` as answer
+        openat(AT_FDCWD, "existing_file", O_RDONLY|O_CLOEXEC) = 3
+# ?
+        statx(0, NULL, AT_STATX_SYNC_AS_STAT, STATX_ALL, NULL) = -1 EFAULT (Bad address)
+        statx(3, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_ALL|0x1000, stx_attributes=0, stx_mode=S_IFREG|0660, stx_size=12, ...}) = 0
+# Move cursor to the beginning of the file
+        lseek(3, 0, SEEK_CUR)                   = 0
+# Read content (until EOF)
+        read(3, "some content", 12)             = 12
+        read(3, "", 32)                         = 0
+# Write message (incl. what we read) to `1` (stdout)
+        write(1, "Read: some content\n", 19Read: some content
+        )    = 19
+# Open file2 in write-only mode and specify to create it if not existing, get file descr. `4`
+        openat(AT_FDCWD, "file2", O_WRONLY|O_CREAT|O_CLOEXEC, 0666) = 4
+# Write 11 bytes to file descr. `4`
+        write(4, "Lorem ipsum", 11)             = 11
+# Delete (unlink) `file2` in the current working directory
+        unlink("file2")                         = 0
+# Close file descr. `4` (was `file2`)
+        close(4)                                = 0
+# Close file descr. `3` (was `existing_file`)
+        close(3)                                = 0
+# Modify signal stack
+        sigaltstack({ss_sp=NULL, ss_flags=SS_DISABLE, ss_size=8192}, NULL) = 0
+# Unmap files/devices from memory
+        munmap(0x7f5b570d7000, 12288)           = 0
+# Exit process group
+        exit_group(0)                           = ?
+```
+
 ---
 
 # Appendix
@@ -374,6 +521,7 @@ duration_ms: 10000
 [inferno]: https://github.com/jonhoo/inferno
 [miniconda]: https://docs.conda.io/en/latest/miniconda.html
 [perf_commands]: https://www.brendangregg.com/perf.html
+[perf_slides]: https://www.slideshare.net/brendangregg/kernel-recipes-2017-using-linux-perf-at-netflix
 [perfetto_build_linux]: https://perfetto.dev/docs/quickstart/linux-tracing
 [perfetto_ui]: https://ui.perfetto.dev/
 [perfetto]: https://ui.perfetto.dev/#!/record
@@ -381,3 +529,4 @@ duration_ms: 10000
 [rust_perf_book]: https://nnethercote.github.io/perf-book/profiling.html
 [simpleperf_android_profiling]: https://android.googlesource.com/platform/system/extras/+/master/simpleperf/doc/android_platform_profiling.md
 [simpleperf]: https://android.googlesource.com/platform/system/extras/+/master/simpleperf/doc/README.md
+[strace]: https://strace.io/
