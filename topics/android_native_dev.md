@@ -99,8 +99,6 @@ cross test --target aarch64-linux-android
 - A good resource on profiling Rust code is the
   [Rust Performance Book][rust_perf_book].
 
-- [Great collection of Linux `perf` commands][perf_commands].
-
 When profiling on Linux, there are a few security settings that can prevent us
 from recording proper traces. The following commands will set less secure but
 more useful settings until the next reboot:
@@ -108,6 +106,19 @@ more useful settings until the next reboot:
 ```sh
 sudo sysctl -w kernel.perf_event_paranoid=-1
 sudo sysctl -w kernel.kptr_restrict=0
+```
+
+## `perf`
+
+The Linux kernel comes with the tool `perf` which can record a lot of kernel,
+CPU and memory events. A great collection of commands can be found in
+[Brendan Gregg's article][perf_commands].
+
+Record and report all systemcalls which carry "open" in their name:
+
+```sh
+sudo perf record -e syscalls:*open* --call-graph=dwarf ./target/debug/syscall_profiling
+sudo perf report --stdio
 ```
 
 ## [`simpleperf`][simpleperf]
@@ -264,7 +275,16 @@ Then you can run this command to profile `heavy_app`, and take a look at the
 flamegraph:
 
 ```sh
+# Profile in release mode
 cargo flamegraph --bin heavy_app
+
+# Profile in debug mode
+cargo flamegraph --bin heavy_app --dev
+
+# Pass `perf` options
+cargo flamegraph -c "record -e branch-misses -c 100 -g"
+
+# The interactive SVGs are best opened in a browser
 firefox flamegraph.svg
 ```
 
