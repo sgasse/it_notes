@@ -368,7 +368,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Delete file
     remove_file("file2")?;
 
-    return Ok(());
+    Ok(())
 }
 ```
 
