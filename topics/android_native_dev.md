@@ -406,7 +406,7 @@ Output (interleaved with comments):
         clock_nanosleep(CLOCK_REALTIME, 0, {tv_sec=1, tv_nsec=0}, 0x7fff04217c30) = 0
 # Open file `existing_file` in current working directory, get file descr. `3` as answer
         openat(AT_FDCWD, "existing_file", O_RDONLY|O_CLOEXEC) = 3
-# ?
+# Store detailed information about a file in a buffer
         statx(0, NULL, AT_STATX_SYNC_AS_STAT, STATX_ALL, NULL) = -1 EFAULT (Bad address)
         statx(3, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_ALL|0x1000, stx_attributes=0, stx_mode=S_IFREG|0660, stx_size=12, ...}) = 0
 # Move cursor to the beginning of the file
