@@ -306,7 +306,7 @@ strace -f -s 255 /usr/bin/ls
 
 Output (interleaved with comments):
 
-```conf
+```sh
         [ ...many lines, probing for and loading libraries... ]
 # Related to setting the right terminal encoding
         ioctl(1, TCGETS, {B38400 opost isig icanon echo ...}) = 0
@@ -381,7 +381,7 @@ strace -f -s 255 ./target/debug/syscall_tracing
 
 Output (interleaved with comments):
 
-```conf
+```sh
         [ ...many lines, probing for and loading libraries... ]
 # Open virtual memory of this process, get file descriptor `3` as answer
         openat(AT_FDCWD, "/proc/self/maps", O_RDONLY|O_CLOEXEC) = 3
