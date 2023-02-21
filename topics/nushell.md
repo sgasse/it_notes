@@ -22,6 +22,7 @@ let-env MYVAT=$"this_is_a_string_with_a_($env.VAR)_and_(id -u)_command"
 ## Auto-complete
 
 Detailed information can be found [here][custom_autocomplete].
+More examples are at [nushell/nu_scripts][nu_scripts]
 
 ### Example: Auto-complete rake tasks
 
@@ -80,3 +81,4 @@ module completions {
 ```
 
 [custom_autocomplete]: https://www.nushell.sh/book/custom_completions.html
+[nu_scripts]: https://github.com/nushell/nu_scripts/tree/main/custom-completions
