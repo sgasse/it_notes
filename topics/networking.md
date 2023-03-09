@@ -303,3 +303,26 @@ iperf3 -c 5201
 ### How to use jumphost configurations?
 
 Read on [here](https://ma.ttias.be/use-jumphost-ssh-client-configurations/)
+
+### How can I ping a locally connected device via IPv6? (link-local)
+
+To ping a locally connected device via IPv6, we need to specify the interface
+used in addition to the address and use `ping6`. Below is an example using the
+interface `enp0`
+
+```bash
+ping6 fe80::aabb:aabb:aabb%eth0
+```
+
+### How can I transfer files over IPv6?
+
+One possibility is using `socat`, if nothing else is available. We need to
+specify the device that we use.
+
+```bash
+# On the receiving side
+socat -u TCP6-LISTEN:9191,reuseaddr OPEN:data.txt,creat
+
+# On the sending side
+socat -u FILE:data.txt TCP6:[fe80::aabb:aabb:aabb:aabb]:9191,so-bindtodevice=enp0
+```
