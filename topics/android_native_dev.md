@@ -174,6 +174,12 @@ adb shell ./data/local/tmp/simpleperf record -o /data/local/tmp/perf.data -g --d
 adb pull /data/local/tmp/perf.data ./
 ```
 
+Turn several perf.data files into HTML reports
+
+```nu
+for $x in (ls *.data | get name) { report_html.py -i $x -o ($x + ".html") --no_browser }
+```
+
 Monitor and display default performance events
 
 ```sh
