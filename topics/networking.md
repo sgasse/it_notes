@@ -326,3 +326,12 @@ socat -u TCP6-LISTEN:9191,reuseaddr OPEN:data.txt,creat
 # On the sending side
 socat -u FILE:data.txt TCP6:[fe80::aabb:aabb:aabb:aabb]:9191,so-bindtodevice=enp0
 ```
+
+### How can I create a virtual network interface with a specific IPv6 and VLAN tag?
+
+```bash
+sudo ip link add link eth1 name eth1.5 type vlan id 5
+sudo ip -6 addr add fd53:1111:222:3::4/64 dev eth1.5
+sudo ip link set eth1 up
+sudo ip link set eth1.5 up
+```
