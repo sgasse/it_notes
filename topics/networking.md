@@ -335,3 +335,22 @@ sudo ip -6 addr add fd53:1111:222:3::4/64 dev eth1.5
 sudo ip link set eth1 up
 sudo ip link set eth1.5 up
 ```
+
+### How to spoof IPv6 and MAC address for traces to be shared?
+
+```bash
+# Set interface down
+sudo ip link set dev eth0 down
+
+# Adjust MAC address
+sudo ip link set dev eth0 address 12:77:77:77:77:77
+
+# Set device up
+sudo ip link set dev eth0 up
+
+# Remove default link-local IPv6
+sudo ip -6 addr delete fe80::3333:3333:3333/64 dev eth0
+
+# Add artificial link-local IPv6
+sudo ip -6 addr add fe80::2222:2222:2222/64 dev eth0
+```
